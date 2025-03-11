@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity =0.8.21;
+pragma solidity 0.8.21;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
@@ -224,7 +224,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
     /// @notice Total vested staked
     uint256 public totalVestedStaked;
 
-    /// @notice New staked
+    /// @notice The stake amount of users in the currentEpoch, this is set to zero on a state udpate.
     uint256 public newStaked;
 
     /// @notice New vested staked
@@ -670,7 +670,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
         //CHECK
         if (cr.requestEpoch < 1) revert ClaimReceiptNotFound();
         // to complete claim receipt, user must wait for at least 3 epochs
-        if (currentEpoch - cr.requestEpoch <= claimCycle) revert CompleteRequestTooEarly();
+        if (currentEpoch - cr.requestEpoch <= claimCycle) revert CompleteRequestTooEarly();//User must wait 3 whole epochs before claiming
 
         //EFFECT
         rewardAmount = cr.amount;
@@ -688,6 +688,11 @@ contract FjordStaking is ISablierV2LockupRecipient {
 
     /// @notice Check and update epoch rollover.
     /// @dev rollover to latest epoch, gap epoches will be filled with previous epoch reward per token
+
+    //q- This can be called and the function updates currentEpoch before addReward is called. Unless we can guarantee addRewards is called after an epoch ends.
+
+    //If a user managers to stake before addRewards is called in a new epoch, current epoch is set to the latest epoch and this function
+    //doesn't run when addRewards is called. What effect does this have?, does this have an effect on addRewards.
     function _checkEpochRollover() internal {
         uint16 latestEpoch = getEpoch(block.timestamp);
 
@@ -704,10 +709,11 @@ contract FjordStaking is ISablierV2LockupRecipient {
                 uint256 pendingRewardsPerToken = (pendingRewards * PRECISION_18) / totalStaked;
                 totalRewards += pendingRewards;
                 for (uint16 i = lastEpochRewarded + 1; i < currentEpoch; i++) {
-                    rewardPerToken[i] = rewardPerToken[lastEpochRewarded] + pendingRewardsPerToken;
+                    rewardPerToken[i] = rewardPerToken[lastEpochRewarded] + pendingRewardsPerToken; //setting rewardPerToken for each epoch
                     emit RewardPerTokenChanged(i, rewardPerToken[i]);
                 }
             } else {
+                //q- For cases where everyone unstakes?
                 for (uint16 i = lastEpochRewarded + 1; i < currentEpoch; i++) {
                     rewardPerToken[i] = rewardPerToken[lastEpochRewarded];
                     emit RewardPerTokenChanged(i, rewardPerToken[i]);
@@ -731,6 +737,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
         UserData storage ud = userData[sender];
 
         ud.unclaimedRewards +=
+            ///If calculate rewards returns a negative this just reverts, does this mean we can only update our rewards on epochs where rewardPerToken goes up?
             calculateReward(ud.totalStaked, ud.lastClaimedEpoch, currentEpoch - 1);
         ud.lastClaimedEpoch = currentEpoch - 1;
 
@@ -752,6 +759,8 @@ contract FjordStaking is ISablierV2LockupRecipient {
     /// must be only call if it's can trigger update next epoch so the total staked won't increase anymore
     /// must be the action to trigger update epoch and the last action of the epoch
     /// @param _amount The amount of tokens to be added as rewards.
+
+    //q- We're not updating any state here, is this correnct
     function addReward(uint256 _amount) external onlyRewardAdmin {
         //CHECK
         if (_amount == 0) revert InvalidAmount();
@@ -760,7 +769,8 @@ contract FjordStaking is ISablierV2LockupRecipient {
         uint16 previousEpoch = currentEpoch;
 
         //INTERACT
-        fjordToken.safeTransferFrom(msg.sender, address(this), _amount);
+        fjordToken.safeTransferFrom(msg.sender, address(this), _amount); //Our reward token is the same as our stakeToken, hmmmm
+        //how do we differentiate between rewards and users stake
 
         _checkEpochRollover();
 
@@ -775,10 +785,10 @@ contract FjordStaking is ISablierV2LockupRecipient {
     function calculateReward(uint256 _amount, uint16 _fromEpoch, uint16 _toEpoch)
         internal
         view
-        returns (uint256 rewardAmount)
-    {
+        returns (uint256 rewardAmount) 
         rewardAmount =
-            (_amount * (rewardPerToken[_toEpoch] - rewardPerToken[_fromEpoch])) / PRECISION_18;
+        ///Over the interval of from - to, we calculate how much reward a token has accrued
+            (_amount * (rewardPerToken[_toEpoch] - rewardPerToken[_fromEpoch])) / PRECISION_18; //q- can't this underflow?
     }
 
     /// @notice Responds to withdrawals triggered by either the stream's sender or an approved third party.

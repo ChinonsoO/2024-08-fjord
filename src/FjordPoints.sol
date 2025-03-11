@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity =0.8.21;
+pragma solidity 0.8.21;
 
 import { ERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { ERC20Burnable } from
@@ -230,7 +230,8 @@ contract FjordPoints is ERC20, ERC20Burnable, IFjordPoints {
      * @notice Distributes points based on the locked amounts in the staking contract.
      */
     function distributePoints() public {
-        if (block.timestamp < lastDistribution + EPOCH_DURATION) {
+        if (block.timestamp < lastDistribution + EPOCH_DURATION) { //q- This is odd, we're not continuosly updating the users points balance
+        //and instead wait for epoch to be over?
             return;
         }
 

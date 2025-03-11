@@ -132,8 +132,8 @@ contract FjordAuction {
         fjordPoints = ERC20Burnable(_fjordPoints);
         auctionToken = IERC20(_auctionToken);
         owner = msg.sender;
-        auctionEndTime = block.timestamp.add(_biddingTime);
-        totalTokens = _totalTokens;
+        auctionEndTime = block.timestamp.add(_biddingTime); //q Is this enforced.
+        totalTokens = _totalTokens; //q- Is it possible for totalTokens to not match the  amount of auctionTokens?
     }
 
     /**
@@ -145,8 +145,12 @@ contract FjordAuction {
             revert AuctionAlreadyEnded();
         }
 
+
+        //q- There's no minimum bid amount could this be an issue?
         bids[msg.sender] = bids[msg.sender].add(amount);
         totalBids = totalBids.add(amount);
+
+        //q- Should Totaltokens be decremented here?
 
         fjordPoints.transferFrom(msg.sender, address(this), amount);
         emit BidAdded(msg.sender, amount);
@@ -178,6 +182,8 @@ contract FjordAuction {
     /**
      * @notice Ends the auction and calculates claimable tokens for each bidder based on their bid proportion.
      */
+ 
+    //q- Anyone can call this function, missing access control maybe?
     function auctionEnd() external {
         if (block.timestamp < auctionEndTime) {
             revert AuctionNotYetEnded();

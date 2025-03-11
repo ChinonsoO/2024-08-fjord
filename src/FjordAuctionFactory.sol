@@ -55,6 +55,8 @@ contract AuctionFactory {
         uint256 totalTokens,
         bytes32 salt
     ) external onlyOwner {
+
+        //Is the correct implementation of a salt?
         address auctionAddress = address(
             new FjordAuction{ salt: salt }(fjordPoints, auctionToken, biddingTime, totalTokens)
         );
