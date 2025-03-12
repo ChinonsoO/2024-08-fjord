@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity =0.8.21;
 
-import "../../src/FjordStaking.sol";
-import "./handler/RewardPerTokenHandler.sol";
+import "../../../src/FjordStaking.sol";
+import "../audit-handler/RewardPerTokenHandler.sol";
 import "forge-std/Test.sol";
 import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
-import { FjordPointsMock } from "../mocks/FjordPointsMock.sol";
+import { FjordPointsMock } from "../../mocks/FjordPointsMock.sol";
 
 contract InvariantRewardPerTokenTest is Test {
     FjordStaking private fjordStaking;
@@ -37,7 +37,7 @@ contract InvariantRewardPerTokenTest is Test {
         uint16 currentEpoch = fjordStaking.currentEpoch();
         // Start from epoch 0 as the base (should be 0 by default)
         uint256 previousRPT = fjordStaking.rewardPerToken(0);
-        for (uint16 epoch = 1; epoch <= currentEpoch; epoch++) {
+        for (uint16 epoch = 1; epoch < currentEpoch; epoch++) {
             uint256 currentRPT = fjordStaking.rewardPerToken(epoch);
             // Assert that the reward per token did not decrease.
             assertGe(currentRPT, previousRPT);

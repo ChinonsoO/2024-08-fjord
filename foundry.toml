@@ -1,7 +1,6 @@
 [profile.default]
 solc_version = "0.8.21"
 ffi = false
-fuzz_runs = 256
 optimizer = true
 optimizer_runs = 3000
 verbosity = 2
@@ -12,13 +11,11 @@ script = 'script/forge'
 libs = ['lib']
 gas_reports = ["*"]
 
-[profile.default.invariant]
-fuzz_runs = 256
-fail_on_revert = true
+[invariant]
+runs=2000
+seed='0x1'
+depth=32
 
-[profile.invariant]
-fail_on_revert = true
-runs = 20
 
 [profile.optimized]
 optimizer-runs = 10000

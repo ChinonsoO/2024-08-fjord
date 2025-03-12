@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity =0.8.21;
 
-import "../BaseHandler.sol";
+import "./BaseHandler.sol";
 import "../../../src/FjordStaking.sol";
 import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 

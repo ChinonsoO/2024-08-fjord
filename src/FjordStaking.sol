@@ -624,9 +624,11 @@ contract FjordStaking is ISablierV2LockupRecipient {
 
         // do not allow to claimReward while user have pending claimReceipt
         // or user have claimed from the last epoch
+
+        //@audit- users can still create a claim reciept for the last epoch after calling claimedRewards because claimReciepts is delteted.
         if (
             claimReceipts[msg.sender].requestEpoch > 0
-                || claimReceipts[msg.sender].requestEpoch >= currentEpoch - 1
+                || claimReceipts[msg.sender].requestEpoch >= currentEpoch - 1 //q-This line doesn't do anything does this lead to any problems?
         ) revert ClaimTooEarly();
 
         if (ud.unclaimedRewards == 0) revert NothingToClaim();
@@ -709,7 +711,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
                 uint256 pendingRewardsPerToken = (pendingRewards * PRECISION_18) / totalStaked;
                 totalRewards += pendingRewards;
                 for (uint16 i = lastEpochRewarded + 1; i < currentEpoch; i++) {
-                    rewardPerToken[i] = rewardPerToken[lastEpochRewarded] + pendingRewardsPerToken; //setting rewardPerToken for each epoch
+                  rewardPerToken[i] = rewardPerToken[lastEpochRewarded] + pendingRewardsPerToken; //setting rewardPerToken for each epoch
                     emit RewardPerTokenChanged(i, rewardPerToken[i]);
                 }
             } else {
@@ -782,12 +784,13 @@ contract FjordStaking is ISablierV2LockupRecipient {
     /// @param _fromEpoch The epoch from which reward calculation starts.
     /// @param _toEpoch The epoch till which reward calculation is done.
     /// @return rewardAmount The reward amount that has been distributed.
-    function calculateReward(uint256 _amount, uint16 _fromEpoch, uint16 _toEpoch)
+    
+    ///Over the interval of from - to, we calculate how much reward a token has accrued
+    function calculateReward(uint256 _amount, uint16 _fromEpoch, uint16 _toEpoch) 
         internal
         view
-        returns (uint256 rewardAmount) 
+        returns (uint256 rewardAmount) {
         rewardAmount =
-        ///Over the interval of from - to, we calculate how much reward a token has accrued
             (_amount * (rewardPerToken[_toEpoch] - rewardPerToken[_fromEpoch])) / PRECISION_18; //q- can't this underflow?
     }
 
