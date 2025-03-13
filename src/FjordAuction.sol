@@ -60,7 +60,7 @@ contract FjordAuction {
     IERC20 public auctionToken;
 
     /// @notice The owner of the auction contract.
-    address public owner;
+    address public owner; //owner == Auction Factory
 
     /// @notice The timestamp when the auction ends.
     uint256 public auctionEndTime;
@@ -197,6 +197,9 @@ contract FjordAuction {
 
         if (totalBids == 0) {
             auctionToken.transfer(owner, totalTokens);
+            //@audit- Our owner here is the auctionFactory and the factory does not have 
+            //any functions to withdraw tokens. So for auctions with zero bids, once this is called
+            //these tokens end up being stuck in the auctionFactory.
             return;
         }
 

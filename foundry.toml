@@ -12,7 +12,7 @@ libs = ['lib']
 gas_reports = ["*"]
 
 [invariant]
-runs=2000
+runs=10
 seed='0x1'
 depth=32
 

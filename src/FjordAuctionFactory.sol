@@ -25,7 +25,7 @@ contract AuctionFactory {
         if (_fjordPoints == address(0)) revert InvalidAddress();
 
         fjordPoints = _fjordPoints;
-        owner = msg.sender;
+        owner = msg.sender; //Owner == deployer
     }
 
     /**

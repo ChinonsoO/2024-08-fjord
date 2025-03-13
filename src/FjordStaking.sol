@@ -370,6 +370,10 @@ contract FjordStaking is ISablierV2LockupRecipient {
         if (_amount == 0) revert InvalidAmount();
 
         //EFFECT
+        //q- Users depositing near the end of an epoch still recieve rewards for the full epoch. This may not
+        //- intentiona? Actually no rewards only start accruing after one full epoch has passed.
+
+        //Ahhh this stops people from depositing huge sums right before an epoch ends to take in rewwards.
         userData[msg.sender].unredeemedEpoch = currentEpoch;
 
         DepositReceipt storage dr = deposits[msg.sender][currentEpoch];
@@ -559,6 +563,9 @@ contract FjordStaking is ISablierV2LockupRecipient {
         }
 
         points.onUnstaked(msg.sender, amount);
+        //@audit in the case where the user cancels their stream message.sender here is 
+        //the fjordStaking Contract, not the streamOwner this leads to a revert and users are
+        //unable to cancel their stream.
 
         emit VestedUnstaked(streamOwner, epoch, amount, _streamID);
     }
@@ -625,7 +632,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
         // do not allow to claimReward while user have pending claimReceipt
         // or user have claimed from the last epoch
 
-        //@audit- users can still create a claim reciept for the last epoch after calling claimedRewards because claimReciepts is delteted.
+        //@audit- users can still create a claim reciept for the last epoch after calling claimedRewards because claimReciepts is delteted. Not too sure about this
         if (
             claimReceipts[msg.sender].requestEpoch > 0
                 || claimReceipts[msg.sender].requestEpoch >= currentEpoch - 1 //q-This line doesn't do anything does this lead to any problems?
@@ -644,6 +651,11 @@ contract FjordStaking is ISablierV2LockupRecipient {
         }
 
         rewardAmount = ud.unclaimedRewards;
+
+        //@audit-low - if gas costs are low enough, and rewards are low enough a user could frequently call claimRewards
+        //with claimEarly set to true and so penalty is rounded down to zero.
+
+        //a- No retard this would have to be 1 wei, jk you're not a retard bro keep trying
         penaltyAmount = rewardAmount / 2;
         rewardAmount -= penaltyAmount;
 
@@ -706,6 +718,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
                 uint256 currentBalance = fjordToken.balanceOf(address(this));
 
                 // no distribute the rewards to the users coming in the current epoch
+                //@audit- Rewards can be inflated by sending money to this contract
                 uint256 pendingRewards = (currentBalance + totalVestedStaked + newVestedStaked)
                     - totalStaked - newStaked - totalRewards;
                 uint256 pendingRewardsPerToken = (pendingRewards * PRECISION_18) / totalStaked;
@@ -730,7 +743,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
             lastEpochRewarded = currentEpoch - 1;
         }
     }
-
+ 
     /// @notice accumulate unclaimed rewards for the user from last non-zero unredeemed epoch
     /// This function should run before every tx user does, so state is correctly maintained everytime
     /// Last unredeemed epoch will be the last epoch user staked
@@ -802,6 +815,9 @@ contract FjordStaking is ISablierV2LockupRecipient {
     /// @param /*caller*/ The original `msg.sender` address that triggered the withdrawal.
     /// @param /*to*/ The staking contract address receiving the withdrawn assets.
     /// @param /*amount*/ The amount of assets withdrawn, denoted in units of the asset's decimals.
+    
+    //q- If a user calls withdraw for this contract that send the tokens to this contract,
+    //doesn't that mean we now double count every time in checkEpochRollover?
     function onStreamWithdrawn(
         uint256, /*streamId*/
         address, /*caller*/
@@ -850,6 +866,7 @@ contract FjordStaking is ISablierV2LockupRecipient {
         uint256 amount =
             uint256(senderAmount) > nftData.amount ? nftData.amount : uint256(senderAmount);
 
+        //@audit- by cancelling a stream users are able to bypass the 3 day vesting lock
         _unstakeVested(streamOwner, streamId, amount);
 
         emit SablierCanceled(streamOwner, streamId, sender, amount);
